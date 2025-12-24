@@ -2,9 +2,9 @@ import dbConnect from "@/lib/db";
 import Employee from "@/models/Employee";
 import EmployeeCard from "@/components/EmployeeCard";
 import AddEmployeeForm from "@/components/AddEmployeeForm";
-import Search from "@/components/Search"; // Import the new component
+import Search from "@/components/Search"; 
+import Pagination from "@/components/Pagination"; // Import the new component
 
-// Interface for the URL parameters
 interface PageProps {
   searchParams: Promise<{
     query?: string;
@@ -13,14 +13,14 @@ interface PageProps {
 }
 
 export default async function Home(props: PageProps) {
-  // Await the search params (Next.js 15 requirement, good practice in 14 too)
   const searchParams = await props.searchParams;
   const query = searchParams.query || "";
+  const currentPage = Number(searchParams.page) || 1;
+  const ITEMS_PER_PAGE = 6;
 
   await dbConnect();
 
-  // Build the filter object
-  // If query exists, search firstName OR lastName (case-insensitive regex)
+  // 1. Build Filter
   const filter = query
     ? {
         $or: [
@@ -30,7 +30,21 @@ export default async function Home(props: PageProps) {
       }
     : {};
 
-  const employees = await Employee.find(filter).sort({ joinedAt: -1 }).lean();
+  // 2. Calculate Skip
+  const skip = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  // 3. Parallel Execution (Optimization)
+  // We run both the count query and the data query at the same time
+  const [totalItems, employees] = await Promise.all([
+    Employee.countDocuments(filter),
+    Employee.find(filter)
+      .sort({ joinedAt: -1 })
+      .skip(skip)
+      .limit(ITEMS_PER_PAGE)
+      .lean(),
+  ]);
+
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
   return (
     <main className="min-h-screen p-10 bg-gray-50">
@@ -39,7 +53,6 @@ export default async function Home(props: PageProps) {
           Employee Directory
         </h1>
         
-        {/* Layout: Search Bar on top */}
         <div className="flex justify-between items-center mb-6">
            <div className="w-full md:w-1/2">
              <Search />
@@ -61,10 +74,13 @@ export default async function Home(props: PageProps) {
           ))}
         </div>
         
-        {employees.length === 0 && (
-          <p className="text-gray-500 text-center mt-10">
-            No employees found matching "{query}".
-          </p>
+        {employees.length === 0 ? (
+           <p className="text-gray-500 text-center mt-10">
+             No employees found matching "{query}".
+           </p>
+        ) : (
+           /* 4. Add the Pagination Controls at the bottom */
+           <Pagination totalPages={totalPages} />
         )}
       </div>
     </main>
