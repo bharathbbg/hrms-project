@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Employee from '@/models/Employee';
+import bcrypt from 'bcryptjs';
 
 // @GetMapping("/api/employees")
 export async function GET() {
@@ -16,12 +17,24 @@ export async function GET() {
 // @PostMapping("/api/employees")
 export async function POST(request: Request) {
   await dbConnect();
+  const body = await request.json();
   try {
     // In Spring: public Employee create(@RequestBody Employee employee)
     // In Next.js: We manually parse the JSON body
-    const body = await request.json();
+    const hashedPassword = await bcrypt.hash("Welcome@123", 10);
+    const employeeData = {
+      ...body,
+      password: hashedPassword, // Auto-assign password
+      role: 'employee', // Default role
+      isActive: true,
+      joinedAt: new Date(),
+    };
+    
+    console.log("--------------------------------");
+    console.log("ATTEMPTING TO SAVE:", employeeData); 
+    console.log("--------------------------------");
 
-    const employee = await Employee.create(body);
+    const employee = await Employee.create(employeeData);
     return NextResponse.json({ success: true, data: employee }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, error: (error as Error).message }, { status: 400 });

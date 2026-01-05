@@ -3,6 +3,7 @@ import Employee from "@/models/Employee";
 import EmployeeCard from "@/components/EmployeeCard";
 import AddEmployeeForm from "@/components/AddEmployeeForm";
 import Search from "@/components/Search"; 
+import { auth, signOut } from "@/auth";
 import Pagination from "@/components/Pagination"; // Import the new component
 
 interface PageProps {
@@ -17,6 +18,8 @@ export default async function Home(props: PageProps) {
   const query = searchParams.query || "";
   const currentPage = Number(searchParams.page) || 1;
   const ITEMS_PER_PAGE = 6;
+  const session = await auth(); // Get the user
+  const userRole = session?.user?.role; // Access the role
 
   await dbConnect();
 
@@ -49,9 +52,29 @@ export default async function Home(props: PageProps) {
   return (
     <main className="min-h-screen p-10 bg-gray-50">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">
-          Employee Directory
-        </h1>
+        {/* Header Section */}
+        <div className="flex justify-between items-end mb-8 border-b pb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Employee Directory</h1>
+            {session?.user && (
+              <p className="text-gray-500 mt-1">
+          Welcome back, <span className="font-semibold text-blue-600">{session.user.name}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Sign Out Button */}
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/login" });
+            }}
+          >
+            <button className="text-sm text-red-600 hover:text-red-800 font-medium px-4 py-2 border border-red-200 rounded hover:bg-red-50 transition">
+              Sign Out
+            </button>
+          </form>
+        </div>
         
         <div className="flex justify-between items-center mb-6">
            <div className="w-full md:w-1/2">
@@ -59,8 +82,9 @@ export default async function Home(props: PageProps) {
            </div>
         </div>
 
-        <AddEmployeeForm />
-
+        {session?.user?.role === 'admin' && (
+          <AddEmployeeForm />
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 min-h-[50vh]">
           {employees.map((employee: any) => (
             <EmployeeCard 
@@ -70,6 +94,7 @@ export default async function Home(props: PageProps) {
               lastName={employee.lastName}
               department={employee.department}
               isActive={employee.isActive}
+              isAdmin={session?.user?.role === 'admin'}
             />
           ))}
         </div>

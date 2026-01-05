@@ -11,6 +11,7 @@ interface EmployeeProps {
     lastName: string;
     department: string;
     isActive: boolean;
+    isAdmin: boolean; // <--- New Prop
 }
 
 export default function EmployeeCard({
@@ -19,6 +20,7 @@ export default function EmployeeCard({
     lastName,
     department,
     isActive,
+    isAdmin
 }: EmployeeProps) {
     const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
@@ -62,7 +64,7 @@ export default function EmployeeCard({
                     {isActive ? "Active" : "Inactive"}
                 </span>
             </div>
-
+        {isAdmin && (
             <div className="flex gap-3">
                 {/* The Link component is Next.js's optimized replacement for <a href> */}
                 <Link
@@ -79,6 +81,7 @@ export default function EmployeeCard({
                     Delete
                 </button>
             </div>
+        )}
         </div>
     );
 }
